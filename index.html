@@ -4,38 +4,65 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Fixed Responsive Loop</title>
-
     <link rel="stylesheet" href="https://vjs.zencdn.net/7.20.3/video-js.css" />
     <link rel="stylesheet" href="https://googleads.github.io/videojs-ima/node_modules/videojs-contrib-ads/dist/videojs.ads.css" />
     <link rel="stylesheet" href="https://googleads.github.io/videojs-ima/dist/videojs.ima.css" />
-
     <style>
         body, html { margin: 0; padding: 0; background: #000; width: 100%; height: 100%; overflow: hidden; }
-
-        /* Mobile me video fit rahega, desktop pe center me */
-        .video-container {
-            width: 100%;
-            height: 100%;
-            display: flex;
-            justify-content: center;
-            align-items: center;
+        #content_video .ima-ad-container,
+        #content_video .ima-ad-container > div,
+        #content_video .ima-ad-container iframe,
+        .vjs-ima-ads-manager {
+            width: 100% !important; height: 100% !important;
+            top: 0 !important; left: 0 !important;
         }
-
+        .video-js .vjs-tech {
+            width: 100% !important; height: 100% !important;
+            position: absolute !important; top: 0 !important; left: 0 !important;
+        }
+        .video-container {
+            width: 100%; height: 100%;
+            display: flex; justify-content: center; align-items: center;
+        }
         .vjs-big-play-button { display: none !important; }
-
-        /* Responsive Size */
         #content_video {
-            width: 100vw !important;
-            height: 56.25vw !important; /* 16:9 ratio */
-            max-width: 640px;
-            max-height: 360px;
+            width: 100vw !important; height: 56.25vw !important;
+            max-width: 640px; max-height: 360px;
+        }
+        /* Tap overlay - always visible until user taps */
+        #play-overlay {
+            display: flex; position: fixed;
+            top: 0; left: 0; width: 100%; height: 100%;
+            background: #000; z-index: 99999;
+            justify-content: center; align-items: center;
+            flex-direction: column; cursor: pointer;
+        }
+        #play-overlay .circle {
+            width: 72px; height: 72px; border-radius: 50%;
+            border: 3px solid #fff; display: flex;
+            justify-content: center; align-items: center;
+        }
+        #play-overlay .triangle {
+            width: 0; height: 0;
+            border-top: 18px solid transparent;
+            border-bottom: 18px solid transparent;
+            border-left: 30px solid #fff; margin-left: 6px;
+        }
+        #play-overlay p {
+            color: #fff; font-family: sans-serif;
+            font-size: 16px; margin-top: 16px;
         }
     </style>
 </head>
-
 <body>
+
+    <div id="play-overlay">
+        <div class="circle"><div class="triangle"></div></div>
+        <p>Tap to Play</p>
+    </div>
+
     <div class="video-container">
-        <video id="content_video" class="video-js vjs-default-skin" preload="auto" muted playsinline autoplay controls>
+        <video id="content_video" class="video-js vjs-default-skin" preload="auto" muted playsinline controls>
             <source src="https://storage.googleapis.com/gtv-videos-bucket/sample/ForBiggerMeltdowns.mp4" type="video/mp4">
         </video>
     </div>
@@ -45,67 +72,56 @@
     <script src="https://googleads.github.io/videojs-ima/node_modules/videojs-contrib-ads/dist/videojs.ads.min.js"></script>
     <script src="https://googleads.github.io/videojs-ima/dist/videojs.ima.js"></script>
 
-<script>
-    var adTagBase = 'https://pubads.g.doubleclick.net/gampad/ads?iu=/22438905166/2025_Oct23_Vast_1&description_url=[placeholder]&tfcd=0&npa=0&sz=400x300&gdfp_req=1&unviewed_position_start=1&output=vast&env=vp&impl=s&correlator=';
+    <script>
+        var adTagBase = 'https://pubads.g.doubleclick.net/gampad/ads?iu=/22438905166/2025_Oct23_Vast_1&description_url=[placeholder]&tfcd=0&npa=0&sz=400x300&gdfp_req=1&unviewed_position_start=1&output=vast&env=vp&impl=s&correlator=';
+        var player = videojs('content_video');
+        var adInitialized = false;
 
-    var player = videojs('content_video');
+        var options = {
+            id: 'content_video',
+            adTagUrl: adTagBase + Date.now(),
+            adWillAutoPlay: true,
+            adWillPlayMuted: true,
+            debug: false
+        };
 
-    var options = {
-        id: 'content_video',
-        adTagUrl: adTagBase + Date.now(),
-        adWillAutoPlay: true,
-        adWillPlayMuted: true,
-        debug: false
-    };
+        player.ready(function() {
+            player.ima(options);
+        });
 
-    player.ready(function() {
-        player.ima(options);
-        player.play();
-    });
+        // Tap overlay — hides and starts everything
+        document.getElementById('play-overlay').addEventListener('click', function() {
+            document.getElementById('play-overlay').style.display = 'none';
+            if (!adInitialized) {
+                adInitialized = true;
+                try { player.ima.initializeAdDisplayContainer(); } catch(e) {}
+            }
+            player.ima.requestAds();
+            player.play();
+        });
 
-    // --- DESKTOP REFRESH FUNCTION ---
-    function hardResetLoop() {
-        console.log("Forcing Loop Refresh...");
-
-        // 1. Pixel Fire (Conversion)
-        var p = new Image();
-        p.src = "https://inkrevenue.gotrackier.com/imp?campaign_id=110544&pub_id=3133&source=Test_Vast_Tag&cb=" + Date.now();
-
-        // 2. Clear Ad Manager (Important for Desktop)
-        if (player.ima && player.ima.getAdsManager()) {
-            player.ima.getAdsManager().destroy();
+        // --- LOOP REFRESH (unchanged) ---
+        function hardResetLoop() {
+            console.log("Forcing Loop Refresh...");
+            var p = new Image();
+            p.src = "https://inkrevenue.gotrackier.com/imp?campaign_id=110544&pub_id=3133&source=Test_Vast_Tag&cb=" + Date.now();
+            if (player.ima && player.ima.getAdsManager()) {
+                player.ima.getAdsManager().destroy();
+            }
+            player.ima.setContentWithAdTag(null, adTagBase + Date.now());
+            player.ima.requestAds();
+            player.currentTime(0);
+            player.play();
         }
 
-        // 3. Request New Ad with new Timestamp
-        player.ima.setContentWithAdTag(null, adTagBase + Date.now());
-        player.ima.requestAds();
+        player.on('ended', hardResetLoop);
+        player.on('contentAndAdsEnded', hardResetLoop);
+        player.on(['adserror', 'adtimeout'], function() {
+            console.log("Ad Error: Skipping to content");
+            player.play();
+        });
+    </script>
 
-        // 4. Restart Video
-        player.currentTime(0);
-        player.play();
-    }
-
-    // Desktop par 'ended' event pakadne ka sabse sahi tarika
-    player.on('ended', hardResetLoop);
-    player.on('contentAndAdsEnded', hardResetLoop);
-
-    // Agar Ad stuck ho jaye toh video chalti rahe
-    player.on(['adserror', 'adtimeout'], function() {
-        console.log("Ad Error: Skipping to content");
-        player.play();
-    });
-
-    // Mobile/Desktop Initial Click
-    var init = function() {
-        player.ima.initializeAdDisplayContainer();
-        player.play();
-        window.removeEventListener('click', init);
-    };
-    window.addEventListener('click', init);
-
-</script>
-
-<img src="https://inkrevenue.gotrackier.com/imp?campaign_id=110544&pub_id=3133&source=Test_Vast_Tag" style="display:none;">
-
+    <img src="https://inkrevenue.gotrackier.com/imp?campaign_id=110544&pub_id=3133&source=Test_Vast_Tag" style="display:none;">
 </body>
 </html>
