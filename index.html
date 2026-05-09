@@ -29,7 +29,6 @@
             width: 100vw !important; height: 56.25vw !important;
             max-width: 640px; max-height: 360px;
         }
-        /* Tap overlay - always visible until user taps */
         #play-overlay {
             display: flex; position: fixed;
             top: 0; left: 0; width: 100%; height: 100%;
@@ -76,6 +75,8 @@
         var adTagBase = 'https://pubads.g.doubleclick.net/gampad/ads?iu=/22438905166/2025_Oct23_Vast_1&description_url=[placeholder]&tfcd=0&npa=0&sz=400x300&gdfp_req=1&unviewed_position_start=1&output=vast&env=vp&impl=s&correlator=';
         var player = videojs('content_video');
         var adInitialized = false;
+        var imaReady = false;
+        var userTapped = false;
 
         var options = {
             id: 'content_video',
@@ -87,26 +88,42 @@
 
         player.ready(function() {
             player.ima(options);
+
+            // Wait for IMA plugin to be fully ready
+            player.one('ima-ready', function() {
+                imaReady = true;
+                // If user already tapped before IMA was ready, start now
+                if (userTapped) startPlayback();
+            });
         });
 
-        // Tap overlay — hides and starts everything
-        document.getElementById('play-overlay').addEventListener('click', function() {
+        function startPlayback() {
             document.getElementById('play-overlay').style.display = 'none';
             if (!adInitialized) {
                 adInitialized = true;
                 try { player.ima.initializeAdDisplayContainer(); } catch(e) {}
             }
-            player.ima.requestAds();
             player.play();
+        }
+
+        // Tap overlay
+        document.getElementById('play-overlay').addEventListener('click', function() {
+            userTapped = true;
+            if (imaReady) {
+                startPlayback();
+            } else {
+                // IMA not ready yet — show loading and wait
+                document.querySelector('#play-overlay p').textContent = 'Loading...';
+            }
         });
 
-        // --- LOOP REFRESH (unchanged) ---
+        // --- LOOP REFRESH ---
         function hardResetLoop() {
             console.log("Forcing Loop Refresh...");
             var p = new Image();
             p.src = "https://inkrevenue.gotrackier.com/imp?campaign_id=110544&pub_id=3133&source=Test_Vast_Tag&cb=" + Date.now();
             if (player.ima && player.ima.getAdsManager()) {
-                player.ima.getAdsManager().destroy();
+                try { player.ima.getAdsManager().destroy(); } catch(e) {}
             }
             player.ima.setContentWithAdTag(null, adTagBase + Date.now());
             player.ima.requestAds();
