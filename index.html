@@ -1,0 +1,111 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Fixed Responsive Loop</title>
+
+    <link rel="stylesheet" href="https://vjs.zencdn.net/7.20.3/video-js.css" />
+    <link rel="stylesheet" href="https://googleads.github.io/videojs-ima/node_modules/videojs-contrib-ads/dist/videojs.ads.css" />
+    <link rel="stylesheet" href="https://googleads.github.io/videojs-ima/dist/videojs.ima.css" />
+
+    <style>
+        body, html { margin: 0; padding: 0; background: #000; width: 100%; height: 100%; overflow: hidden; }
+
+        /* Mobile me video fit rahega, desktop pe center me */
+        .video-container {
+            width: 100%;
+            height: 100%;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+
+        .vjs-big-play-button { display: none !important; }
+
+        /* Responsive Size */
+        #content_video {
+            width: 100vw !important;
+            height: 56.25vw !important; /* 16:9 ratio */
+            max-width: 640px;
+            max-height: 360px;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="video-container">
+        <video id="content_video" class="video-js vjs-default-skin" preload="auto" muted playsinline autoplay controls>
+            <source src="https://storage.googleapis.com/gtv-videos-bucket/sample/ForBiggerMeltdowns.mp4" type="video/mp4">
+        </video>
+    </div>
+
+    <script src="https://imasdk.googleapis.com/js/sdkloader/ima3.js"></script>
+    <script src="https://vjs.zencdn.net/7.20.3/video.min.js"></script>
+    <script src="https://googleads.github.io/videojs-ima/node_modules/videojs-contrib-ads/dist/videojs.ads.min.js"></script>
+    <script src="https://googleads.github.io/videojs-ima/dist/videojs.ima.js"></script>
+
+<script>
+    var adTagBase = 'https://pubads.g.doubleclick.net/gampad/ads?iu=/22438905166/2025_Oct23_Vast_1&description_url=[placeholder]&tfcd=0&npa=0&sz=400x300&gdfp_req=1&unviewed_position_start=1&output=vast&env=vp&impl=s&correlator=';
+
+    var player = videojs('content_video');
+
+    var options = {
+        id: 'content_video',
+        adTagUrl: adTagBase + Date.now(),
+        adWillAutoPlay: true,
+        adWillPlayMuted: true,
+        debug: false
+    };
+
+    player.ready(function() {
+        player.ima(options);
+        player.play();
+    });
+
+    // --- DESKTOP REFRESH FUNCTION ---
+    function hardResetLoop() {
+        console.log("Forcing Loop Refresh...");
+
+        // 1. Pixel Fire (Conversion)
+        var p = new Image();
+        p.src = "https://inkrevenue.gotrackier.com/imp?campaign_id=110544&pub_id=3133&source=Test_Vast_Tag&cb=" + Date.now();
+
+        // 2. Clear Ad Manager (Important for Desktop)
+        if (player.ima && player.ima.getAdsManager()) {
+            player.ima.getAdsManager().destroy();
+        }
+
+        // 3. Request New Ad with new Timestamp
+        player.ima.setContentWithAdTag(null, adTagBase + Date.now());
+        player.ima.requestAds();
+
+        // 4. Restart Video
+        player.currentTime(0);
+        player.play();
+    }
+
+    // Desktop par 'ended' event pakadne ka sabse sahi tarika
+    player.on('ended', hardResetLoop);
+    player.on('contentAndAdsEnded', hardResetLoop);
+
+    // Agar Ad stuck ho jaye toh video chalti rahe
+    player.on(['adserror', 'adtimeout'], function() {
+        console.log("Ad Error: Skipping to content");
+        player.play();
+    });
+
+    // Mobile/Desktop Initial Click
+    var init = function() {
+        player.ima.initializeAdDisplayContainer();
+        player.play();
+        window.removeEventListener('click', init);
+    };
+    window.addEventListener('click', init);
+
+</script>
+
+<img src="https://inkrevenue.gotrackier.com/imp?campaign_id=110544&pub_id=3133&source=Test_Vast_Tag" style="display:none;">
+
+</body>
+</html>
